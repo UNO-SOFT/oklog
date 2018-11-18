@@ -112,3 +112,7 @@ func (c *compressedFile) Close() error {
 	}
 	return err
 }
+
+func uncompressedFilename(path string) string {
+	return noCompressor.From(path).Bare(path)
+}
