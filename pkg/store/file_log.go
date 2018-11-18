@@ -143,7 +143,7 @@ func (fl *fileLog) Overlapping() ([]ReadSegment, error) {
 		if filepath.Ext(c.Bare(path)) != extFlushed {
 			return nil // skip
 		}
-		if _, _, err := parseFilename(path); err != nil {
+		if _, _, err := parseFilename(c.Bare(path)); err != nil {
 			fl.reporter.ReportEvent(Event{
 				Op: "Overlapping", File: path, Warning: err,
 				Msg: fmt.Sprintf("will remove apparently-bad data file of size %d", info.Size()),
@@ -164,7 +164,8 @@ func (fl *fileLog) Overlapping() ([]ReadSegment, error) {
 	// Then, for each segment, compare against all other segments.
 	// Record all segments which overlap.
 	for path := range segments {
-		a, b, err := parseFilename(path) // TODO(pb): maybe eliminate double work
+		c := DefaultCompressor.From(path)
+		a, b, err := parseFilename(c.Bare(path)) // TODO(pb): maybe eliminate double work
 		if err != nil {
 			panic(fmt.Errorf("failed to parse a filename that must have successfully parsed previously: %v", err))
 		}
@@ -172,7 +173,7 @@ func (fl *fileLog) Overlapping() ([]ReadSegment, error) {
 			if path == compare {
 				continue // we will overlap with ourselves, natch
 			}
-			c, d, err := parseFilename(compare)
+			c, d, err := parseFilename(DefaultCompressor.From(compare).Bare(compare))
 			if err != nil {
 				panic(fmt.Errorf("failed to parse a filename that must have successfully parsed previously: %v", err))
 			}
@@ -225,7 +226,7 @@ func (fl *fileLog) Sequential() ([]ReadSegment, error) {
 		if filepath.Ext(c.Bare(path)) != extFlushed {
 			return nil // skip
 		}
-		a, _, err := parseFilename(path)
+		a, _, err := parseFilename(c.Bare(path))
 		if err != nil {
 			fl.reporter.ReportEvent(Event{
 				Op: "Sequential", File: path, Warning: err,
@@ -282,7 +283,7 @@ func (fl *fileLog) Trashable(oldestRecord time.Time) ([]ReadSegment, error) {
 		if filepath.Ext(c.Bare(path)) != extFlushed {
 			return nil // skip
 		}
-		_, high, err := parseFilename(path)
+		_, high, err := parseFilename(c.Bare(path))
 		if err != nil {
 			fl.reporter.ReportEvent(Event{
 				Op: "Trashable", File: path, Warning: err,
@@ -501,7 +502,7 @@ func (fl *fileLog) queryMatchingSegments(from, to ulid.ULID) (segments []readSeg
 		if ext := filepath.Ext(c.Bare(path)); !(ext == extFlushed || ext == extReading) {
 			return nil // skip
 		}
-		low, high, err := parseFilename(path)
+		low, high, err := parseFilename(c.Bare(path))
 		if err != nil {
 			fl.reporter.ReportEvent(Event{
 				Op: "queryMatchingSegments", File: path, Warning: err,
